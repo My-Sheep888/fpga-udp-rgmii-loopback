@@ -13,6 +13,7 @@
 *.runs/
 *.sim/
 *.srcs/
+.Xil/
 
 # ModelSim / simulation generated files
 work/
