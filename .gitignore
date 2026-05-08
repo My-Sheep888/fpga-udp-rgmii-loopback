@@ -7,7 +7,6 @@
 *.bit
 *.bin
 *.ltx
-*.xpr
 *.cache/
 *.hw/
 *.ip_user_files/
