@@ -1,0 +1,28 @@
+# Vivado generated files
+*.jou
+*.log
+*.str
+*.rpt
+*.dcp
+*.bit
+*.bin
+*.ltx
+*.xpr
+*.cache/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+*.srcs/
+
+# ModelSim / simulation generated files
+work/
+transcript
+vsim.wlf
+*.wlf
+*.vcd
+
+# Local temp files
+*.tmp
+*.bak
+Thumbs.db
