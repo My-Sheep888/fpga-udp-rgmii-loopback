@@ -1,5 +1,7 @@
 `timescale 1ns / 1ps
 
+// RGMII 接收模块：
+// 使用输入延时和 IDDR，把 PHY 的 4bit DDR 数据恢复成内部 8bit GMII 数据。
 module rgmii_rx_artix7 #(
     parameter integer IDELAY_VALUE = 0
 )(
@@ -17,18 +19,22 @@ module rgmii_rx_artix7 #(
     wire [3:0]  rgmii_rxd_delay;
     wire [1:0]  gmii_rx_dv_ddr;
 
+    // RGMII RX_CTL 在上/下沿均为 1 时表示接收数据有效。
     assign gmii_rx_dv = gmii_rx_dv_ddr[0] & gmii_rx_dv_ddr[1];
 
+    // BUFG 产生逻辑使用的 GMII 接收时钟。
     BUFG u_rx_clk_bufg (
         .I(rgmii_rxc),
         .O(gmii_rx_clk)
     );
 
+    // BUFIO 产生 IO 采样使用的高速本地时钟。
     BUFIO u_rx_clk_bufio (
         .I(rgmii_rxc),
         .O(rgmii_rxc_bufio)
     );
 
+    // IDELAYCTRL 需要 200MHz 参考时钟，负责校准输入延时单元。
     (* IODELAY_GROUP = "udp_loopback_rgmii" *)
     IDELAYCTRL u_idelayctrl (
         .RDY(),
@@ -36,6 +42,7 @@ module rgmii_rx_artix7 #(
         .RST(1'b0)
     );
 
+    // 对 RX_CTL 加固定延时，用来调整 RGMII 输入采样位置。
     (* IODELAY_GROUP = "udp_loopback_rgmii" *)
     IDELAYE2 #(
         .IDELAY_TYPE("FIXED"),
@@ -56,6 +63,7 @@ module rgmii_rx_artix7 #(
         .REGRST(1'b0)
     );
 
+    // 双沿采样 RX_CTL，得到两个半字节对应的数据有效标志。
     IDDR #(
         .DDR_CLK_EDGE("SAME_EDGE_PIPELINED"),
         .INIT_Q1(1'b0),
@@ -74,6 +82,7 @@ module rgmii_rx_artix7 #(
     genvar i;
     generate
         for (i = 0; i < 4; i = i + 1) begin : g_rx_data
+            // 每根 RGMII 数据线先经过固定输入延时。
             (* IODELAY_GROUP = "udp_loopback_rgmii" *)
             IDELAYE2 #(
                 .IDELAY_TYPE("FIXED"),
@@ -94,6 +103,7 @@ module rgmii_rx_artix7 #(
                 .REGRST(1'b0)
             );
 
+            // 上升沿采样低 4bit，下降沿采样高 4bit，合成 GMII 8bit。
             IDDR #(
                 .DDR_CLK_EDGE("SAME_EDGE_PIPELINED"),
                 .INIT_Q1(1'b0),

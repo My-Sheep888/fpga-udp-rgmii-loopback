@@ -1,5 +1,7 @@
 `timescale 1ns / 1ps
 
+// UDP 发送模块：
+// 根据核心传入的目标 MAC/IP、端口和 payload 长度，重新组装 Ethernet + IPv4 + UDP 帧。
 module udp_tx #(
     parameter [47:0] LOCAL_MAC = 48'h00_11_22_33_44_66,
     parameter [31:0] LOCAL_IP  = {8'd192, 8'd168, 8'd6, 8'd12}
@@ -21,6 +23,7 @@ module udp_tx #(
     output reg [7:0]  gmii_txd
 );
 
+    // 发送状态机：空闲、前导码、协议头、payload、padding、FCS、帧间隔。
     localparam S_IDLE = 3'd0;
     localparam S_PREAMBLE = 3'd1;
     localparam S_HEADER = 3'd2;
@@ -43,6 +46,7 @@ module udp_tx #(
     reg [15:0] pad_len;
     reg [15:0] ip_checksum;
 
+    // 以太网 CRC32 逐字节更新，用于生成输出帧 FCS。
     function [31:0] eth_crc32_next_func;
         input [7:0] data;
         input [31:0] crc_i;
@@ -60,6 +64,7 @@ module udp_tx #(
         end
     endfunction
 
+    // Ethernet FCS 为最终 CRC 值取反。
     function [31:0] eth_crc32_fcs_func;
         input [31:0] crc_i;
         begin
@@ -67,6 +72,7 @@ module udp_tx #(
         end
     endfunction
 
+    // 计算 IPv4 首部校验和。UDP checksum 在本设计中填 0。
     function [15:0] calc_ip_checksum;
         input [15:0] total_len_i;
         input [31:0] dst_ip_i;
@@ -88,6 +94,7 @@ module udp_tx #(
         end
     endfunction
 
+    // 按 Ethernet/IP/UDP 固定字段顺序生成 42 字节协议头。
     function [7:0] header_byte;
         input [7:0] idx;
         begin
@@ -163,6 +170,7 @@ module udp_tx #(
             tx_done <= 1'b0;
             case (state)
                 S_IDLE: begin
+                    // 收到 tx_start 后锁存本次回包所需的地址、端口和长度。
                     gmii_tx_en <= 1'b0;
                     gmii_txd <= 8'd0;
                     tx_busy <= 1'b0;
@@ -188,6 +196,7 @@ module udp_tx #(
                 end
 
                 S_PREAMBLE: begin
+                    // 发送 7 字节 0x55 前导码和 1 字节 0xd5 SFD。
                     gmii_tx_en <= 1'b1;
                     gmii_txd <= (index < 16'd7) ? 8'h55 : 8'hd5;
                     if (index == 16'd7) begin
@@ -199,6 +208,7 @@ module udp_tx #(
                 end
 
                 S_HEADER: begin
+                    // 发送 Ethernet + IPv4 + UDP 头，同时把这些字节计入 CRC。
                     gmii_tx_en <= 1'b1;
                     gmii_txd <= header_byte(index[7:0]);
                     crc <= eth_crc32_next_func(header_byte(index[7:0]), crc);
@@ -220,6 +230,7 @@ module udp_tx #(
                 end
 
                 S_PAYLOAD: begin
+                    // 从核心缓存中顺序读取 UDP payload 并发送。
                     gmii_tx_en <= 1'b1;
                     gmii_txd <= payload_rd_data;
                     crc <= eth_crc32_next_func(payload_rd_data, crc);
@@ -238,6 +249,7 @@ module udp_tx #(
                 end
 
                 S_PAD: begin
+                    // payload 较短时补 0，满足以太网最小帧长。
                     gmii_tx_en <= 1'b1;
                     gmii_txd <= 8'h00;
                     crc <= eth_crc32_next_func(8'h00, crc);
@@ -251,6 +263,7 @@ module udp_tx #(
                 end
 
                 S_FCS: begin
+                    // 发送 4 字节 FCS，GMII 上低字节先发。
                     gmii_tx_en <= 1'b1;
                     case (index)
                         16'd0: gmii_txd <= fcs[7:0];
@@ -268,6 +281,7 @@ module udp_tx #(
                 end
 
                 S_IFG: begin
+                    // 帧间隔：发送完成后保持一段空闲周期。
                     gmii_tx_en <= 1'b0;
                     gmii_txd <= 8'd0;
                     if (index == 16'd11)

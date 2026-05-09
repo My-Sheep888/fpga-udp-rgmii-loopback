@@ -1,5 +1,7 @@
 `timescale 1ns / 1ps
 
+// GMII UDP 回环 testbench：
+// 构造一帧带 FCS 的 UDP 包送入 DUT，并检查 DUT 发出的回包字段和 payload。
 module tb_udp_loopback_gmii;
 
     reg clk;
@@ -22,6 +24,7 @@ module tb_udp_loopback_gmii;
     localparam [31:0] LOCAL_IP  = {8'd192, 8'd168, 8'd6, 8'd12};
     localparam [31:0] HOST_IP   = {8'd192, 8'd168, 8'd6, 8'd100};
 
+    // DUT 使用 GMII 顶层，便于在不依赖 RGMII 原语仿真的情况下验证协议逻辑。
     udp_loopback_gmii #(
         .LOCAL_MAC(LOCAL_MAC),
         .LOCAL_IP(LOCAL_IP),
@@ -38,9 +41,11 @@ module tb_udp_loopback_gmii;
         .packet_dropped(packet_dropped)
     );
 
+    // 125MHz GMII 时钟，周期 8ns。
     initial clk = 1'b0;
     always #4 clk = ~clk;
 
+    // 捕获 DUT 发出的 GMII 字节，后面用 expect_byte 做字段检查。
     always @(posedge clk) begin
         if (gmii_tx_en) begin
             tx_bytes[tx_count] <= gmii_txd;
@@ -48,6 +53,7 @@ module tb_udp_loopback_gmii;
         end
     end
 
+    // testbench 用的软件 CRC32，用于给输入帧补正确 FCS。
     function [31:0] crc32_next;
         input [7:0] data;
         input [31:0] crc;
@@ -65,6 +71,7 @@ module tb_udp_loopback_gmii;
         end
     endfunction
 
+    // 发送一个 GMII 字节；调用者负责决定该字节是否计入 CRC。
     task send_byte;
         input [7:0] b;
         begin
@@ -74,6 +81,7 @@ module tb_udp_loopback_gmii;
         end
     endtask
 
+    // 发送以太网帧体字节，同时更新输入帧 CRC。
     task send_frame_byte;
         input [7:0] b;
         begin
@@ -82,6 +90,7 @@ module tb_udp_loopback_gmii;
         end
     endtask
 
+    // 构造输入 UDP 帧：HOST -> LOCAL，payload 为 de ad be ef。
     task send_udp_frame;
         reg [15:0] total_len;
         reg [15:0] udp_len;
@@ -142,6 +151,7 @@ module tb_udp_loopback_gmii;
         end
     endtask
 
+    // 比较 DUT 输出帧的指定字节，不匹配时立即结束仿真并打印错误。
     task expect_byte;
         input integer index;
         input [7:0] expected;
@@ -154,6 +164,7 @@ module tb_udp_loopback_gmii;
     endtask
 
     initial begin
+        // 初始化 testbench 信号和记录数组，避免波形里出现无意义的 X。
         rst_n = 1'b0;
         gmii_rx_dv = 1'b0;
         gmii_rxd = 8'h00;

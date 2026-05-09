@@ -1,5 +1,8 @@
 `timescale 1ns / 1ps
 
+// GMII <-> RGMII 桥接模块：
+// RX 方向把 RGMII 双沿 4bit 数据恢复成 GMII 单沿 8bit 数据；
+// TX 方向把 GMII 单沿 8bit 数据打到 RGMII 双沿 4bit 管脚。
 module gmii_to_rgmii_artix7 #(
     parameter integer IDELAY_VALUE = 0
 )(
@@ -17,6 +20,7 @@ module gmii_to_rgmii_artix7 #(
     output     [3:0]  rgmii_txd
 );
 
+    // RGMII 接收：使用 PHY 提供的 RXC 采样 RX_CTL/RXD。
     rgmii_rx_artix7 #(
         .IDELAY_VALUE(IDELAY_VALUE)
     ) u_rgmii_rx (
@@ -29,6 +33,7 @@ module gmii_to_rgmii_artix7 #(
         .gmii_rxd(gmii_rxd)
     );
 
+    // RGMII 发送：转发 GMII 时钟并把低/高 4bit 分别放在时钟双沿。
     rgmii_tx_artix7 u_rgmii_tx (
         .gmii_tx_clk(gmii_clk),
         .gmii_tx_en(gmii_tx_en),

@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
-// Reused from the original project's udp/crc32_d8.v, with the module name
-// changed so the standalone UDP project can coexist with the old sources.
+// 8bit 并行 CRC32 计算模块：
+// 复用原工程 udp/crc32_d8.v 的组合逻辑，模块名改为 eth_crc32_d8，便于独立工程复用。
 module eth_crc32_d8(
     input                 clk,
     input                 rst_n,
@@ -14,8 +14,10 @@ module eth_crc32_d8(
 
 wire [7:0] data_t;
 
+// 原 CRC 逻辑按 bit 反序输入，这里先把 GMII 字节做 bit 翻转。
 assign data_t = {data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]};
 
+// crc_next 是当前 crc_data 加上一个新字节后的下一拍 CRC 值。
 assign crc_next[0] = crc_data[24] ^ crc_data[30] ^ data_t[0] ^ data_t[6];
 assign crc_next[1] = crc_data[24] ^ crc_data[25] ^ crc_data[30] ^ crc_data[31]
                    ^ data_t[0] ^ data_t[1] ^ data_t[6] ^ data_t[7];
@@ -78,6 +80,7 @@ assign crc_next[29] = crc_data[21] ^ crc_data[27] ^ crc_data[30] ^ crc_data[31]
 assign crc_next[30] = crc_data[22] ^ crc_data[28] ^ crc_data[31] ^ data_t[4] ^ data_t[7];
 assign crc_next[31] = crc_data[23] ^ crc_data[29] ^ data_t[5];
 
+// crc_clr 用于一帧开始时重置 CRC，crc_en 有效时每拍吃入一个字节。
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)
         crc_data <= 32'hff_ff_ff_ff;

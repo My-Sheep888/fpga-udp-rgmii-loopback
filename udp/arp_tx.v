@@ -1,5 +1,7 @@
 `timescale 1ns / 1ps
 
+// ARP 应答发送模块：
+// 收到 reply_start 后，向 target_mac/target_ip 发送标准 ARP reply。
 module arp_tx #(
     parameter [47:0] LOCAL_MAC = 48'h00_11_22_33_44_66,
     parameter [31:0] LOCAL_IP  = {8'd192, 8'd168, 8'd6, 8'd12}
@@ -16,6 +18,7 @@ module arp_tx #(
     output reg [7:0]  gmii_txd
 );
 
+    // 发送状态机：空闲、前导码、ARP 帧体、FCS、帧间隔。
     localparam S_IDLE = 3'd0;
     localparam S_PREAMBLE = 3'd1;
     localparam S_FRAME = 3'd2;
@@ -29,6 +32,7 @@ module arp_tx #(
     reg [47:0] dst_mac_latched;
     reg [31:0] dst_ip_latched;
 
+    // 以太网 CRC32 更新函数，用于生成 ARP 应答的 FCS。
     function [31:0] eth_crc32_next_func;
         input [7:0] data;
         input [31:0] crc_i;
@@ -46,6 +50,7 @@ module arp_tx #(
         end
     endfunction
 
+    // Ethernet FCS 为最终 CRC 值取反。
     function [31:0] eth_crc32_fcs_func;
         input [31:0] crc_i;
         begin
@@ -53,6 +58,7 @@ module arp_tx #(
         end
     endfunction
 
+    // 生成 ARP reply 的 60 字节帧内容，后部补 0 满足最小帧长。
     function [7:0] arp_byte;
         input [7:0] idx;
         begin
@@ -120,6 +126,7 @@ module arp_tx #(
             tx_done <= 1'b0;
             case (state)
                 S_IDLE: begin
+                    // 启动时锁存目标 MAC/IP，避免发送过程中输入变化影响本帧。
                     gmii_tx_en <= 1'b0;
                     gmii_txd <= 8'd0;
                     tx_busy <= 1'b0;
@@ -134,6 +141,7 @@ module arp_tx #(
                 end
 
                 S_PREAMBLE: begin
+                    // 发送 7 字节 0x55 前导码和 1 字节 0xd5 SFD。
                     gmii_tx_en <= 1'b1;
                     gmii_txd <= (index < 8'd7) ? 8'h55 : 8'hd5;
                     if (index == 8'd7) begin
@@ -145,6 +153,7 @@ module arp_tx #(
                 end
 
                 S_FRAME: begin
+                    // 发送 ARP reply 帧体，同时计算 CRC。
                     gmii_tx_en <= 1'b1;
                     gmii_txd <= arp_byte(index);
                     crc <= eth_crc32_next_func(arp_byte(index), crc);
@@ -158,6 +167,7 @@ module arp_tx #(
                 end
 
                 S_FCS: begin
+                    // 发送 4 字节 FCS，低字节先发。
                     gmii_tx_en <= 1'b1;
                     case (index)
                         8'd0: gmii_txd <= fcs[7:0];
@@ -175,6 +185,7 @@ module arp_tx #(
                 end
 
                 S_IFG: begin
+                    // 帧间隔，结束后回到空闲。
                     gmii_tx_en <= 1'b0;
                     gmii_txd <= 8'd0;
                     if (index == 8'd11)

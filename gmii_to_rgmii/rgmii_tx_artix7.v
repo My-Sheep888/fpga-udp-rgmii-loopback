@@ -1,5 +1,7 @@
 `timescale 1ns / 1ps
 
+// RGMII 发送模块：
+// 用 ODDR 在时钟上升沿发送 gmii_txd[3:0]，下降沿发送 gmii_txd[7:4]。
 module rgmii_tx_artix7(
     input             gmii_tx_clk,
     input             gmii_tx_en,
@@ -9,6 +11,7 @@ module rgmii_tx_artix7(
     output     [3:0]  rgmii_txd
 );
 
+    // RGMII 要求转发时钟，ODDR 输出 1010... 形成 TXC。
     ODDR #(
         .DDR_CLK_EDGE("SAME_EDGE"),
         .INIT(1'b0),
@@ -23,6 +26,7 @@ module rgmii_tx_artix7(
         .S(1'b0)
     );
 
+    // RGMII TX_CTL 在本设计里只表示 TX_EN，两个边沿输出相同值。
     ODDR #(
         .DDR_CLK_EDGE("SAME_EDGE"),
         .INIT(1'b0),
@@ -40,6 +44,7 @@ module rgmii_tx_artix7(
     genvar i;
     generate
         for (i = 0; i < 4; i = i + 1) begin : g_tx_data
+            // 每个 RGMII 数据管脚承载一个低位 bit 和一个高位 bit。
             ODDR #(
                 .DDR_CLK_EDGE("SAME_EDGE"),
                 .INIT(1'b0),
