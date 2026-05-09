@@ -6,23 +6,23 @@ if {[catch {current_project}]} {
 set project_dir [get_property DIRECTORY [current_project]]
 
 set rtl_files [list \
-  [file join $project_dir rtl arp_rx.v] \
-  [file join $project_dir rtl arp_tx.v] \
-  [file join $project_dir rtl eth_frame_rx.v] \
-  [file join $project_dir rtl gmii_to_rgmii_artix7.v] \
-  [file join $project_dir rtl rgmii_rx_artix7.v] \
-  [file join $project_dir rtl rgmii_tx_artix7.v] \
-  [file join $project_dir rtl udp_loopback_core.v] \
-  [file join $project_dir rtl udp_rx.v] \
-  [file join $project_dir rtl udp_tx.v] \
-  [file join $project_dir rtl udp_loopback_rgmii_artix7_top.v] \
-  [file join $project_dir rtl eth_crc32_d8.v] \
-  [file join $project_dir rtl udp_loopback_gmii.v] \
+  [file join $project_dir udp arp_rx.v] \
+  [file join $project_dir udp arp_tx.v] \
+  [file join $project_dir udp eth_frame_rx.v] \
+  [file join $project_dir gmii_to_rgmii gmii_to_rgmii_artix7.v] \
+  [file join $project_dir gmii_to_rgmii rgmii_rx_artix7.v] \
+  [file join $project_dir gmii_to_rgmii rgmii_tx_artix7.v] \
+  [file join $project_dir udp udp_loopback_core.v] \
+  [file join $project_dir udp udp_rx.v] \
+  [file join $project_dir udp udp_tx.v] \
+  [file join $project_dir udp_loopback_rgmii_artix7_top.v] \
+  [file join $project_dir udp eth_crc32_d8.v] \
+  [file join $project_dir udp_loopback_gmii.v] \
 ]
 
 set sim_file [file join $project_dir sim tb_udp_loopback_gmii.v]
 
-remove_files -quiet [get_files -quiet *udp_loopback_project*]
+remove_files -quiet [get_files -quiet */rtl/*]
 remove_files -quiet [get_files -quiet *tb_udp_loopback_gmii.v]
 
 add_files -fileset sources_1 -norecurse $rtl_files
