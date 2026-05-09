@@ -13,6 +13,7 @@ module tb_udp_loopback_gmii;
     wire packet_dropped;
 
     integer tx_count;
+    integer init_index;
     reg [7:0] tx_bytes [0:255];
     reg [31:0] send_crc;
 
@@ -157,6 +158,9 @@ module tb_udp_loopback_gmii;
         gmii_rx_dv = 1'b0;
         gmii_rxd = 8'h00;
         tx_count = 0;
+        send_crc = 32'hffff_ffff;
+        for (init_index = 0; init_index < 256; init_index = init_index + 1)
+            tx_bytes[init_index] = 8'h00;
         repeat (8) @(posedge clk);
         rst_n = 1'b1;
         repeat (4) @(posedge clk);
