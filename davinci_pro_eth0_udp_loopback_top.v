@@ -18,13 +18,23 @@ module davinci_pro_eth0_udp_loopback_top #(
     output            eth_txc,
     output            eth_tx_ctl,
     output     [3:0]  eth_txd,
-    output            eth_rst_n
+    output            eth_rst_n,
+    output     [3:0]  led
 );
 
     wire clk_200m;
     wire clk_200m_locked;
     wire phy_ready;
     wire core_rst_n;
+    wire packet_seen;
+    wire packet_echoed;
+    wire packet_dropped;
+
+    reg eth_rx_ctl_meta;
+    reg eth_rx_ctl_sync;
+    reg rx_activity_seen;
+    reg packet_seen_status;
+    reg packet_echoed_status;
 
     // 达芬奇 Pro 系统时钟为 50MHz，这里用 MMCM 原语生成 IDELAYCTRL 需要的 200MHz。
     clk_200m_gen_artix7 u_clk_200m_gen (
@@ -46,6 +56,35 @@ module davinci_pro_eth0_udp_loopback_top #(
 
     assign core_rst_n = sys_rst_n & clk_200m_locked & phy_ready;
 
+    // LED 状态指示：
+    // LED0：PHY 复位已释放；
+    // LED1：FPGA 管脚侧观察到 RGMII 接收活动；
+    // LED2：协议核心已接收一个可处理的 ARP/UDP 包；
+    // LED3：协议核心已完成一次 ARP/UDP 回包发送。
+    always @(posedge sys_clk or negedge sys_rst_n) begin
+        if (!sys_rst_n) begin
+            eth_rx_ctl_meta <= 1'b0;
+            eth_rx_ctl_sync <= 1'b0;
+            rx_activity_seen <= 1'b0;
+            packet_seen_status <= 1'b0;
+            packet_echoed_status <= 1'b0;
+        end else begin
+            eth_rx_ctl_meta <= eth_rx_ctl;
+            eth_rx_ctl_sync <= eth_rx_ctl_meta;
+            if (eth_rx_ctl_sync)
+                rx_activity_seen <= 1'b1;
+            if (packet_seen)
+                packet_seen_status <= 1'b1;
+            if (packet_echoed)
+                packet_echoed_status <= 1'b1;
+        end
+    end
+
+    assign led[0] = phy_ready;
+    assign led[1] = rx_activity_seen;
+    assign led[2] = packet_seen_status;
+    assign led[3] = packet_echoed_status | packet_dropped;
+
     // 通用 RGMII UDP 回环顶层，板级 eth_* 信号在这里映射到 rgmii_* 信号。
     udp_loopback_rgmii_artix7_top #(
         .LOCAL_MAC(LOCAL_MAC),
@@ -61,9 +100,9 @@ module davinci_pro_eth0_udp_loopback_top #(
         .rgmii_txc(eth_txc),
         .rgmii_tx_ctl(eth_tx_ctl),
         .rgmii_txd(eth_txd),
-        .packet_seen(),
-        .packet_echoed(),
-        .packet_dropped()
+        .packet_seen(packet_seen),
+        .packet_echoed(packet_echoed),
+        .packet_dropped(packet_dropped)
     );
 
 endmodule

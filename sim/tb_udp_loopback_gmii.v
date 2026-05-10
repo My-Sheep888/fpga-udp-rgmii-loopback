@@ -151,6 +151,37 @@ module tb_udp_loopback_gmii;
         end
     endtask
 
+    task send_lldp_like_frame;
+        integer i;
+        begin
+            send_crc = 32'hffff_ffff;
+
+            send_byte(8'h55); send_byte(8'h55); send_byte(8'h55); send_byte(8'h55);
+            send_byte(8'h55); send_byte(8'h55); send_byte(8'h55); send_byte(8'hd5);
+
+            send_frame_byte(8'h01); send_frame_byte(8'h80);
+            send_frame_byte(8'hc2); send_frame_byte(8'h00);
+            send_frame_byte(8'h00); send_frame_byte(8'h0e);
+            send_frame_byte(HOST_MAC[47:40]); send_frame_byte(HOST_MAC[39:32]);
+            send_frame_byte(HOST_MAC[31:24]); send_frame_byte(HOST_MAC[23:16]);
+            send_frame_byte(HOST_MAC[15:8]);  send_frame_byte(HOST_MAC[7:0]);
+            send_frame_byte(8'h88); send_frame_byte(8'hcc);
+
+            for (i = 0; i < 46; i = i + 1)
+                send_frame_byte(8'h00);
+
+            send_crc = ~send_crc;
+            send_byte(send_crc[7:0]);
+            send_byte(send_crc[15:8]);
+            send_byte(send_crc[23:16]);
+            send_byte(send_crc[31:24]);
+
+            @(posedge clk);
+            gmii_rx_dv <= 1'b0;
+            gmii_rxd <= 8'h00;
+        end
+    endtask
+
     // 比较 DUT 输出帧的指定字节，不匹配时立即结束仿真并打印错误。
     task expect_byte;
         input integer index;
@@ -175,6 +206,9 @@ module tb_udp_loopback_gmii;
         repeat (8) @(posedge clk);
         rst_n = 1'b1;
         repeat (4) @(posedge clk);
+
+        send_lldp_like_frame();
+        repeat (12) @(posedge clk);
 
         send_udp_frame();
         wait(packet_echoed == 1'b1);

@@ -26,7 +26,13 @@ set_property -dict {PACKAGE_PIN R19 IOSTANDARD LVCMOS33} [get_ports {eth_txd[3]}
 ## PHY 复位，低有效
 set_property -dict {PACKAGE_PIN N20 IOSTANDARD LVCMOS33} [get_ports eth_rst_n]
 
-## sys_clk 只用于产生 200MHz IDELAY 参考时钟和复位延时；
+## 板载 LED0-LED3
+set_property -dict {PACKAGE_PIN V9 IOSTANDARD LVCMOS15} [get_ports {led[0]}]
+set_property -dict {PACKAGE_PIN Y8 IOSTANDARD LVCMOS15} [get_ports {led[1]}]
+set_property -dict {PACKAGE_PIN Y7 IOSTANDARD LVCMOS15} [get_ports {led[2]}]
+set_property -dict {PACKAGE_PIN W7 IOSTANDARD LVCMOS15} [get_ports {led[3]}]
+
+## sys_clk 只用于产生 200MHz IDELAY 参考时钟和复位延时。
 ## eth_rxc 是以太网数据路径时钟，两者按异步时钟处理。
 set_false_path -from [get_clocks sys_clk] -to [get_clocks eth_rxc]
 set_false_path -from [get_clocks eth_rxc] -to [get_clocks sys_clk]

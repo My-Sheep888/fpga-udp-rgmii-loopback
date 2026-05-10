@@ -27,6 +27,7 @@ module arp_rx #(
     reg [15:0] oper;
     reg [31:0] target_ip;
     reg        is_arp;
+    wire [15:0] frame_index = frame_start ? 16'd0 : index;
 
     // 流式解析 ARP 报文，帧尾 CRC 正确后再输出请求/应答脉冲。
     always @(posedge clk or negedge rst_n) begin
@@ -58,7 +59,7 @@ module arp_rx #(
             end
 
             if (frame_valid) begin
-                case (index)
+                case (frame_index)
                     // Ethernet header：目的 MAC 和类型字段。
                     16'd0:  dst_mac[47:40] <= frame_data;
                     16'd1:  dst_mac[39:32] <= frame_data;
@@ -91,7 +92,7 @@ module arp_rx #(
                     default: begin end
                 endcase
 
-                index <= index + 1'b1;
+                index <= frame_index + 1'b1;
             end
 
             // 只响应发给本机 IP 的 ARP 帧，并且要求以太网 CRC 正确。

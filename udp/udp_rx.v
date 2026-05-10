@@ -38,6 +38,7 @@ module udp_rx #(
     reg        is_udp;
     reg        header_ok;
     reg [15:0] payload_count;
+    wire [15:0] frame_index = frame_start ? 16'd0 : index;
 
     // 单时钟流式解析：一边接收 frame_data，一边按固定偏移锁存协议字段。
     always @(posedge clk or negedge rst_n) begin
@@ -87,7 +88,7 @@ module udp_rx #(
             end
 
             if (frame_valid) begin
-                case (index)
+                case (frame_index)
                     // Ethernet header：目的 MAC、源 MAC、类型。
                     16'd0:  dst_mac[47:40] <= frame_data;
                     16'd1:  dst_mac[39:32] <= frame_data;
@@ -139,7 +140,7 @@ module udp_rx #(
                     end
                     default: begin
                         // header_ok 成立后，把 UDP payload 顺序写入外部缓存。
-                        if (is_udp && header_ok && index >= 16'd42 && payload_count < payload_len) begin
+                        if (is_udp && header_ok && frame_index >= 16'd42 && payload_count < payload_len) begin
                             payload_we <= 1'b1;
                             payload_addr <= payload_count[10:0];
                             payload_data <= frame_data;
@@ -148,7 +149,7 @@ module udp_rx #(
                     end
                 endcase
 
-                index <= index + 1'b1;
+                index <= frame_index + 1'b1;
             end
 
             // 一帧结束且 CRC 正确、payload 长度匹配时，给核心一个 UDP 包有效脉冲。
