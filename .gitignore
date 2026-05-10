@@ -21,6 +21,7 @@ transcript
 vsim.wlf
 *.wlf
 *.vcd
+*.wcfg
 
 # Local temp files
 *.tmp

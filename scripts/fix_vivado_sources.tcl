@@ -18,15 +18,21 @@ set rtl_files [list \
   [file join $project_dir udp_loopback_rgmii_artix7_top.v] \
   [file join $project_dir udp eth_crc32_d8.v] \
   [file join $project_dir udp_loopback_gmii.v] \
+  [file join $project_dir clk_200m_gen_artix7.v] \
+  [file join $project_dir phy_reset_delay.v] \
+  [file join $project_dir davinci_pro_eth0_udp_loopback_top.v] \
 ]
 
 set sim_file [file join $project_dir sim tb_udp_loopback_gmii.v]
+set constr_file [file join $project_dir constrs davinci_pro_eth0.xdc]
 
 remove_files -quiet [get_files -quiet */rtl/*]
 remove_files -quiet [get_files -quiet *tb_udp_loopback_gmii.v]
+remove_files -quiet [get_files -quiet *tb_udp_loopback_gmii_behav.wcfg]
 
 add_files -fileset sources_1 -norecurse $rtl_files
 add_files -fileset sim_1 -norecurse $sim_file
+add_files -fileset constrs_1 -norecurse $constr_file
 
 set sim_files [get_files -quiet $sim_file]
 if {[llength $sim_files] > 0} {
@@ -35,7 +41,7 @@ if {[llength $sim_files] > 0} {
   set_property USED_IN_SIMULATION true $sim_files
 }
 
-set_property top udp_loopback_rgmii_artix7_top [get_filesets sources_1]
+set_property top davinci_pro_eth0_udp_loopback_top [get_filesets sources_1]
 set_property top tb_udp_loopback_gmii [get_filesets sim_1]
 
 update_compile_order -fileset sources_1
